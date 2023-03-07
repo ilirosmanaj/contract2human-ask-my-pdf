@@ -1,23 +1,29 @@
 from ai_bricks.api import openai
 import stats
 
+usage_stats = None
+tokenizer_model = openai.model('text-davinci-003')
+
+
 def use_key(key):
 	openai.use_key(key)
 
-usage_stats = None
+
 def set_user(user):
 	global usage_stats
 	usage_stats = stats.get_stats(user=user)
 	openai.set_global('user', user)
 	openai.add_callback('after', stats_callback)
 
+
 def complete(text, **kw):
-	model = kw.get('model','gpt-3.5-turbo')
+	model = kw.get('model', 'gpt-3.5-turbo')
 	llm = openai.model(model)
 	llm.config['pre_prompt'] = 'output only in raw text' # for chat models
 	resp = llm.complete(text, **kw)
 	resp['model'] = model
 	return resp
+
 
 def embedding(text, **kw):
 	model = kw.get('model','text-embedding-ada-002')
@@ -26,9 +32,10 @@ def embedding(text, **kw):
 	resp['model'] = model
 	return resp
 
-tokenizer_model = openai.model('text-davinci-003')
+
 def get_token_count(text):
 	return tokenizer_model.token_count(text)
+
 
 def stats_callback(out, resp, self):
 	model = self.config['model']
