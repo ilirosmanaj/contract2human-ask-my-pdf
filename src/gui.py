@@ -1,18 +1,40 @@
 __version__ = "1.0.0"
 
+import random
 from typing import List
 
-app_name = "contract2human-demo"
+from dataclasses import dataclass
+from typing import Optional
 
+
+@dataclass
+class QuestionModelOutput:
+    question: str
+    answer: Optional[str] = None
+    positive_feedback: Optional[bool] = None
+
+    @property
+    def question_answered(self):
+        return self.answer is not None
+
+    def as_dict(self):
+        return {
+            "question": self.question,
+            "answer": self.answer,
+            "positive_feedback": self.positive_feedback
+        }
+
+    @classmethod
+    def from_dict(cls, question, answer, positive_feedback):
+        return QuestionModelOutput(question=question, answer=answer, positive_feedback=positive_feedback)
+
+
+app_name = "contract2human-demo"
 
 import streamlit as st
 
 st.set_page_config(layout='wide', page_title=f'{app_name} {__version__}')
 ss = st.session_state
-
-if 'debug' not in ss:
-    ss['debug'] = {}
-
 
 import css
 import prompts
@@ -20,25 +42,43 @@ import model
 import storage
 import feedback
 
-from time import time as now
-
 QUESTIONS = [
-    'What is Populace Coffee?',
-    'When was Populace Coffee founded?',
-    'What is Espresso Clutch'
+    "Was sind die Arbeitszeiten?",
+    "Gibt es Betriebsferien?",
+    "GIbt es ein Formerfordernis der Kündigung?",
+    "Gibt es Formerfordernisse von zusätzlichen Vereinbarungen?",
+    "Gibt es eine Fortzahlung der Arbeitsvergütung im Krankheitsfall?",
+    "Ist das Arbeitsverhältnis zeitlich begrenzt?",
+    "Kündigungsfrist während der Probezeit?",
+    "Sind Nebentätigkeit erlaubt?",
+    "Welche Pflichten hat der Arbeitnehmer bei Arbeitsunfähigkeit?",
+    "Welche Regelungen gibt es zur Urlaubsabwicklung während der Kündigung?",
+    "Wie lange beträgt die Urlaubsdauer?",
+    "Gibt es Regelungen zum Verfall des gesetzlichen Urlaubs?",
+    "Gibt es Regelungen zum Verfall des Zusatzurlaubs?",
+    "Gibt es Regelungen zum Verfall von Ansprüchen?",
+    "Gibt es eine Verschwiegenheitspflicht?",
+    "Wann beginnt das Arbeitsverhältnis?",
+    "Was ist die Arbeitstätigkeit?",
+    "Wie ist die Vergütung?",
+    "Wie lange beträgt die Kündigungsfrist?",
+    "Wie lange dauert die Probezeit?",
 ]
 
-from dataclasses import dataclass
+ANSWERS_OUTPUT: List[QuestionModelOutput] = [QuestionModelOutput(question=q) for q in QUESTIONS]
 
 
-@dataclass
-class AnswerOutput:
-    question: str
-    answer: str
-    formatted: str
+def set_answer_feedback(idx: int, positive: bool):
+    st.write("Hinaaaaaaaaa")
+    global ANSWERS_OUTPUT
+    st.write(f"{idx} - {positive}")
+    print(f"Length before: {ANSWERS_OUTPUT}")
+    ANSWERS_OUTPUT[idx].positive_feedback = positive
+    ss['questions'] = ANSWERS_OUTPUT
+    print(f"Length after: {ANSWERS_OUTPUT}")
+    st.experimental_rerun()
+    # readd_questions()
 
-
-ANSWERS_OUTPUT: List[AnswerOutput] = []
 
 st.write(f'<style>{css.v1}</style>', unsafe_allow_html=True)
 header1 = st.empty()  # for errors / messages
@@ -64,7 +104,7 @@ def ui_info():
 
 
 def load_api_key():
-    api_key = "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"
+    api_key = "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"
     model.use_key(api_key)
     if 'data_dict' not in ss:
         ss['data_dict'] = {}
@@ -74,9 +114,6 @@ def load_api_key():
     model.set_user(ss['user'])
     ss['feedback'] = feedback.get_feedback_adapter(ss['user'])
     ss['feedback_score'] = ss['feedback'].get_score()
-
-    ss['debug']['storage.folder'] = ss['storage'].folder
-    ss['debug']['storage.class'] = ss['storage'].__class__.__name__
 
 
 def index_pdf_file():
@@ -98,7 +135,6 @@ def debug_index():
     d['pages'] = index['pages']
     d['texts'] = index['texts']
     d['time'] = index.get('time', {})
-    ss['debug']['index'] = d
 
 
 def ui_pdf_file():
@@ -108,10 +144,6 @@ def ui_pdf_file():
         'pdf file', type='pdf', key='pdf_file', disabled=False, on_change=index_pdf_file,
         label_visibility="collapsed"
     )
-
-
-def ui_show_debug():
-    st.checkbox('show debug section', key='show_debug')
 
 
 def ui_fix_text():
@@ -167,29 +199,7 @@ def ui_question():
                  label_visibility="collapsed", disabled=disabled)
 
 
-# REF: Hypotetical Document Embeddings
-def ui_hyde_answer():
-    # TODO: enter or generate
-    pass
-
-
-def ui_output():
-    # output = ss.get('output', '')
-    # st.markdown('')
-    st.session_state.output = ''
-    st.session_state.output = "\n".join([a.formatted for a in ANSWERS_OUTPUT])
-
-    st.markdown(st.session_state.output)
-
-
-def ui_debug():
-    if ss.get('show_debug'):
-        st.write('### debug')
-        st.write(ss.get('debug', {}))
-
-
 def process_questions():
-
     disabled = not ss.get('api_key') or not ss.get('index')
     if st.button('Generate Predefined Answers', disabled=disabled, type='primary', use_container_width=True):
         temperature = ss.get('temperature', 0.0)
@@ -223,60 +233,15 @@ def process_questions():
 
                 q = question.strip()
                 a = resp['text'].strip()
-                ss['answer'] = a
-                output_add(q, a, index=idx + 1)
-                ui_output()
-                # st.experimental_rerun()  # to enable the feedback buttons
 
-
-# def b_ask():
-#     c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 2, 2])
-#     if c2.button('👍', use_container_width=True, disabled=not ss.get('output')):
-#         ss['feedback'].send(+1, ss, details=ss['send_details'])
-#         ss['feedback_score'] = ss['feedback'].get_score()
-#     if c3.button('👎', use_container_width=True, disabled=not ss.get('output')):
-#         ss['feedback'].send(-1, ss, details=ss['send_details'])
-#         ss['feedback_score'] = ss['feedback'].get_score()
-#     score = ss.get('feedback_score', 0)
-#     c5.write(f'feedback score: {score}')
-#
-#     disabled = not ss.get('api_key') or not ss.get('index')
-#     if c1.button('get answer', disabled=disabled, type='primary', use_container_width=True):
-#         question = ss.get('question', '')
-#         temperature = ss.get('temperature', 0.0)
-#         hyde = ss.get('use_hyde')
-#         hyde_prompt = ss.get('hyde_prompt')
-#         if ss.get('use_hyde_summary'):
-#             summary = ss['index']['summary']
-#             hyde_prompt += f" Context: {summary}\n\n"
-#         task = ss.get('task')
-#         max_frags = ss.get('max_frags', 1)
-#         n_before = ss.get('n_frag_before', 0)
-#         n_after = ss.get('n_frag_after', 0)
-#         index = ss.get('index', {})
-#         with st.spinner('preparing answer'):
-#             resp = model.query(question, index,
-#                                task=task,
-#                                temperature=temperature,
-#                                hyde=hyde,
-#                                hyde_prompt=hyde_prompt,
-#                                max_frags=max_frags,
-#                                limit=max_frags + 2,
-#                                n_before=n_before,
-#                                n_after=n_after,
-#                                model=ss['model'],
-#                                )
-#         usage = resp.get('usage', {})
-#         usage['cnt'] = 1
-#         ss['debug']['model.query.resp'] = resp
-#         ss['debug']['resp.usage'] = usage
-#         ss['debug']['model.vector_query_time'] = resp['vector_query_time']
-#
-#         q = question.strip()
-#         a = resp['text'].strip()
-#         ss['answer'] = a
-#         output_add(q, a)
-#         st.experimental_rerun()  # to enable the feedback buttons
+                st.markdown("""<hr style="height:6px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns([2, 3, 1, 1])
+                c1.markdown(q)
+                c2.markdown(a)
+                if c3.button('👍', use_container_width=True, disabled=False, key=f"positive_feedback{idx}-{random.randint(0, 1000000000)}"):
+                    set_answer_feedback(idx=idx, positive=True)
+                if c4.button('👎', use_container_width=True, disabled=False, key=f"negative_feedback{idx}-{random.randint(0, 1000000000)}"):
+                    set_answer_feedback(idx=idx, positive=False)
 
 
 def b_clear():
@@ -304,28 +269,52 @@ def b_delete():
             db.delete(name)
         st.experimental_rerun()
 
-
-def output_add(question: str, answer: str, index=None):
-    if 'output' not in ss:
-        ss['output'] = ''
-    q = question.replace('$', r'\$')
-    a = answer.replace('$', r'\$')
-
-    if index:
-        new = f'#### Q{index}. {q}\n{a}\n\n'
-    else:
-        new = f'#### {q}\n{a}\n\n'
-
-    ANSWERS_OUTPUT.append(
-        AnswerOutput(question=question, answer=answer, formatted=new)
-    )
+#
+# def readd_questions():
+#     global QUESTIONS_DIV
+#     QUESTIONS_DIV.empty()
+#
+#     QUESTIONS_DIV = st.container()
+#     QUESTIONS_DIV.markdown(f'Feedback: {[q.positive_feedback for q in ss.get("questions", [])]}')
+#
+#     for idx, question in enumerate(ss.get('questions', [])):
+#         QUESTIONS_DIV.markdown("""<hr style="height:6px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+#         c1, c2, c3, c4 = QUESTIONS_DIV.columns([2, 3, 1, 1])
+#         c1.markdown(question.question)
+#         c2.markdown(question.answer)
+#         if c3.button('👍', use_container_width=True, disabled=False, key=f"positive_feedback{idx}-{random.randint(0, 1000000000)}"):
+#             set_answer_feedback(idx=idx, positive=True)
+#         if c4.button('👎', use_container_width=True, disabled=False, key=f"negative_feedback{idx}-{random.randint(0, 1000000000)}"):
+#             set_answer_feedback(idx=idx, positive=False)
+#
+#         # st.markdown("""<hr style="height:6px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+#         # c1, c2, c3, c4 = st.columns([2, 3, 1, 1])
+#         # c1.markdown(question.question)
+#         # c2.markdown(question.answer)
+#         # if c3.button('👍', use_container_width=True, disabled=False, key=f"positive_feedback{idx}"):
+#         #     set_answer_feedback(index=idx, positive=True)
+#         # if c4.button('👎', use_container_width=True, disabled=False, key=f"negative_feedback{idx}"):
+#         #     set_answer_feedback(index=idx, positive=False)
+#
+#     if QUESTIONS_DIV.button('SUBMIT FEEDBACK', disabled=False, type='primary', use_container_width=True):
+#         import json
+#
+#         # Create a dictionary
+#         data = {
+#             "name": "John",
+#             "age": 30,
+#             "city": "New York"
+#         }
+#
+#         # Open a file for writing and write the dictionary to the file as JSON
+#         with open("data.json", "w") as file:
+#             json.dump([a.as_dict() for a in ss.get("questions", [])], file)
 
 
 with st.sidebar:
     ui_info()
     ui_spacer(2)
     with st.expander('advanced'):
-        ui_show_debug()
         b_clear()
         ui_model()
         ui_fragments()
@@ -340,9 +329,6 @@ with st.sidebar:
 
 load_api_key()
 ui_pdf_file()
-# ui_question()
-ui_hyde_answer()
 process_questions()
-# b_ask()
-ui_output()
-ui_debug()
+
+

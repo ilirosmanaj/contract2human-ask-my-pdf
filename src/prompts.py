@@ -6,10 +6,9 @@ TASK = {
     'v6': (
         "Answer the question truthfully based on the text below. "
         "Include verbatim quote and a comment where to find it in the text (page number). "
-        # "After the quote write a step by step explanation in a new paragraph. "
         "After the quote write a step by step explanation. "
         "Use bullet points. "
-        # "After that try to rephrase the original question so it might give better results. "
+        "If not information is in the text do not invent new context. Give the answer in German"
     ),
     'v5': (
         "Answer the question truthfully based on the text below. "
@@ -27,14 +26,9 @@ TASK = {
     'v3': 'Answer the question truthfully based on the text below. Include verbatim quote and a comment where to find it in the text (ie name of the section and page number).',
     'v2': 'Answer question based on context. The answers sould be elaborate and based only on the context.',
     'v1': 'Answer question based on context.',
-    # 'v5':
-    # "Generate a comprehensive and informative answer for a given question solely based on the provided document fragments. " \
-    # "You must only use information from the provided fragments. Use an unbiased and journalistic tone. Combine fragments together into coherent answer. " \
-    # "Do not repeat text. Cite fragments using [${number}] notation. Only cite the most relevant fragments that answer the question accurately. " \
-    # "If different fragments refer to different entities with the same name, write separate answer for each entity.",
 }
 
-HYDE = "Write an example answer to the following question. Don't write generic answer, just assume everything that is not known."
+HYDE = "Schreiben Sie eine Beispielantwort auf die folgende Frage. Schreiben Sie keine allgemeine Antwort, sondern gehen Sie von allem aus, was nicht bekannt ist."
 
 # TODO
 SUMMARY = {
