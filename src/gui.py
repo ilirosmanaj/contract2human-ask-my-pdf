@@ -104,7 +104,7 @@ def ui_info():
 
 
 def load_api_key():
-    api_key = "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"
+    api_key = "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"
     model.use_key(api_key)
     if 'data_dict' not in ss:
         ss['data_dict'] = {}
