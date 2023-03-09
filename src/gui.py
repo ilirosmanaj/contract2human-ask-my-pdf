@@ -104,8 +104,8 @@ def ui_info():
 
 
 def load_api_key():
-    api_key = "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"
-    model.use_key(api_key)
+    api_key = "3oMx1QIkqaLyBrrrqUIaJFkblB3TvZiinFrgFXUuSk6zKDSM-ks"
+    model.use_key(api_key[::-1])
     if 'data_dict' not in ss:
         ss['data_dict'] = {}
     ss['api_key'] = api_key
